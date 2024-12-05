@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "658418908192",
+    "project_id": "mirea-products",
+    "storage_bucket": "mirea-products.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:658418908192:android:d0399afeac21228d239045",
+        "android_client_info": {
+          "package_name": "com.example.prodcalcu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFAkrRO_v9-O9CA2oY8Q3gWv2m-bAtHvU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
