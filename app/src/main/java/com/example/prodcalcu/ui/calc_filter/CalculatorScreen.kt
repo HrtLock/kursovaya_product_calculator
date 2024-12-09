@@ -36,7 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.prodcalcu.logic.CampType
+import com.example.prodcalcu.logic.Climate
 import com.example.prodcalcu.ui.navigation.BottomNavigationBar
+import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
 
 @Composable
@@ -47,14 +52,14 @@ fun CalculatorScreen(navController: NavHostController) {
     var calcName by remember { mutableStateOf("") }
     var dayNumber by remember { mutableStateOf(1) }
     var personNumber by remember { mutableStateOf(1) }
-    var selectedActivity by remember { mutableStateOf("") }
-    var selectedSeason by remember { mutableStateOf("") }
-    var selectedConditions by remember { mutableStateOf(listOf<String>()) }
+    var selectedActivity by remember { mutableStateOf(CampType.PERMANENT_CAMP) }
+    var selectedSeason by remember { mutableStateOf(Climate.SUMMER) }
 
     // Список фильтров
-    val activities = listOf("Лагерь", "Радиальная", "Подвижный лагерь")
-    val seasons = listOf("Зима", "Лето", "Демисезон")
-    val conditions = listOf("Горы", "Лесополоса", "Нет дерева", "Нет питьевой воды", "Многодневный переход")
+    val activities = listOf(CampType.PERMANENT_CAMP, CampType.MOBILE_CAMP, CampType.RADIAL_EXCURSIONS)
+    val seasons = listOf(Climate.SUMMER, Climate.WINTER, Climate.DEMISEASON)
+
+
 
     Scaffold (
         bottomBar = {
@@ -92,7 +97,7 @@ fun CalculatorScreen(navController: NavHostController) {
                     // Поле ввода названия раскладки
                     OutlinedTextField(
                         value = calcName,
-                        onValueChange = {},
+                        onValueChange = { newValue -> calcName = newValue },
                         placeholder = { Text("Название раскладки") },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -122,7 +127,7 @@ fun CalculatorScreen(navController: NavHostController) {
                             FilterChip(
                                 selected = selectedActivity == activity,
                                 onClick = { selectedActivity = activity },
-                                label = { Text(activity) }
+                                label = { Text(activity.displayName) }
                             )
                         }
                     }
@@ -134,44 +139,19 @@ fun CalculatorScreen(navController: NavHostController) {
                             FilterChip(
                                 selected = selectedSeason == season,
                                 onClick = { selectedSeason = season },
-                                label = { Text(season) }
+                                label = { Text(season.displayName) }
                             )
                         }
                     }
 
-                    // Условия (Filter Chips)
-                    Text("Условия", style = MaterialTheme.typography.bodyMedium)
-                    FlowRow(modifier = Modifier.padding(8.dp)) {
-                        conditions.forEach { condition ->
-                            FilterChip(
-                                selected = selectedConditions.contains(condition),
-                                onClick = {
-                                    selectedConditions =
-                                        if (selectedConditions.contains(condition)) {
-                                            selectedConditions - condition
-                                        } else {
-                                            selectedConditions + condition
-                                        }
-                                },
-                                label = { Text(condition) }
-                            )
-                        }
-                    }
+
                 }
             }
             // Кнопка Применить фильтр
             Button(
                 onClick = {
-                    val query = createFilterQuery(
-                        calcName = calcName,
-                        dayNumber = dayNumber,
-                        personNumber = personNumber,
-                        activity = selectedActivity,
-                        season = selectedSeason,
-                        conditions = selectedConditions
-                    )
-                    // Отправка запроса
-                    println(query)
+                    // Навигация с передачей параметров через строку
+                    navController.navigate("result?calcName=$calcName&dayNumber=$dayNumber&personNumber=$personNumber&activity=${selectedActivity.name}&season=${selectedSeason.name}")
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -201,16 +181,14 @@ fun createFilterQuery(
     calcName: String,
     dayNumber: Int,
     personNumber: Int,
-    activity: String,
-    season: String,
-    conditions: List<String>
+    activity: CampType,
+    season: Climate,
 ): String {
     return "Название раскладки: $calcName, " +
             "Количество дней: $dayNumber, " +
             "Количество человек: $personNumber, " +
             "Активность: $activity, " +
-            "Время года/Климат: $season, " +
-            "Условия: ${conditions.joinToString(", ")}"
+            "Время года/Климат: $season"
 }
 
 

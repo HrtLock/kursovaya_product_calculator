@@ -16,7 +16,7 @@ navigationCompose = "2.7.7"
 [libraries]
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "bomVersion" }
 firebase-auth = { module = "com.google.firebase:firebase-auth"}
-#firebase-firestore = {group = "com.google.firebase", name = "com.google.firebase:firebase-firestore-ktx"}
+firebase-firestore = {group = "com.google.firebase", name = "firebase-firestore-ktx"}
 
 
 
