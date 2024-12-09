@@ -2,6 +2,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
@@ -34,6 +35,9 @@ fun ResultScreen(
     val fs = Firebase.firestore
     val ingredientsCollection = fs.collection("meals")
     val productsCollection = fs.collection("products")
+
+
+
 
     LaunchedEffect(Unit) {
         // Получаем все ингредиенты из Firestore
@@ -100,30 +104,68 @@ fun ResultScreen(
 
                 // Группируем ингредиенты по названию блюда
                 val groupedIngredients = mealPlans.groupBy { it.meal }
+                val ingredientsList = remember { mutableStateListOf<List<Ingredient>>() }
 
                 // Отображаем карточки для каждого уникального блюда
                 groupedIngredients.forEach { (mealName, ingredients) ->
-                    MealCard(mealName, ingredients, productsCollection)
+                    MealCard(mealName, ingredients, productsCollection, personNumber, activity, season)
+                    ingredientsList.add(ingredients)
                 }
+                NutritionCard(mealPlans, productsCollection, personNumber, activity, season)
             }
         }
     }
 }
 
 @Composable
-fun MealCard(mealName: String, ingredients: List<Ingredient>, products: CollectionReference) {
-    val productDetails = remember { mutableStateListOf<Pair<String, Int>>() } // Список пар (название продукта, вес)
+fun MealCard(
+    mealName: String,
+    ingredients: List<Ingredient>,
+    products: CollectionReference,
+    personNumber: Int,
+    activity: CampType,
+    season: Climate,
+) {
+    val productDetails = remember { mutableStateListOf<Pair<String, Double>>() } // Список пар (название продукта, вес)
+    val totalProteins = remember { mutableStateOf(0.0) }
+    val totalFats = remember { mutableStateOf(0.0) }
+    val totalCarbohydrates = remember { mutableStateOf(0.0) }
+    val totalCalories = remember { mutableStateOf(0.0) }
+    val totalMass = remember { mutableStateOf(0.0) }
 
     LaunchedEffect(ingredients) {
         productDetails.clear() // Очищаем список перед загрузкой
+        totalProteins.value = 0.0
+        totalFats.value = 0.0
+        totalCarbohydrates.value = 0.0
+        totalCalories.value = 0.0
+        totalMass.value = 0.0
 
-        // Получаем информацию о каждом продукте для ингредиентов
+        for (ingredient in ingredients) {
+            totalMass.value += ingredient.weightPerPortion
+        }
+
         for (ingredient in ingredients) {
             val productDocument = products.document(ingredient.productId.toString()).get().await()
             val product = productDocument.toObject(Product::class.java)
 
             if (product != null) {
-                productDetails.add(Pair(product.name, ingredient.weightPerPortion))
+                val ingredientKof = calculateKof(
+                    prodCalories = product.calories,
+                    mType = ingredient.type,
+                    climate = season.calorieAdjustmentPercentage,
+                    cType = activity.dailyCalories*(ingredient.weightPerPortion/totalMass.value)
+                )
+
+                // Добавляем продукт в список с учетом коэффициента
+                productDetails.add(Pair(product.name, ingredient.weightPerPortion* ingredientKof))
+
+                // Суммируем значения с учетом коэффициента
+                totalProteins.value += (product.proteins  * ingredientKof)
+                totalFats.value += (product.fats * ingredientKof)
+                totalCarbohydrates.value += (product.carbohydrates * ingredientKof)
+                totalCalories.value += (product.calories * ingredientKof)
+
             }
         }
     }
@@ -132,15 +174,88 @@ fun MealCard(mealName: String, ingredients: List<Ingredient>, products: Collecti
         Column(modifier = Modifier.padding(16.dp)) {
             Text(mealName, style = MaterialTheme.typography.headlineMedium)
 
-            // Отображаем информацию о продуктах и граммовке
+            // Отображаем информацию о продуктах и их массах
             Column {
                 productDetails.forEach { (productName, weight) ->
-                    Text("$productName: $weight гр")
+                    Text("$productName: ${"%.1f".format(weight)} гр")
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Выводим БЖУ и калории в виде чипов
+            Row(modifier = Modifier.padding(vertical = 8.dp)) {
+                Chip(text = "${"%.1f".format(totalProteins.value)} Б", modifier = Modifier.padding(end = 4.dp))
+                Chip(text = "${"%.1f".format(totalFats.value)} Ж", modifier = Modifier.padding(end = 4.dp))
+                Chip(text = "${"%.1f".format(totalCarbohydrates.value)} У", modifier = Modifier.padding(end = 4.dp))
+                Chip(text = "${"%.1f".format(totalCalories.value)} ккал")
+            }
         }
+    }
+}
+
+
+
+@Composable
+fun NutritionCard(ingredients: List<Ingredient>, products: CollectionReference,
+                  personNumber: Int,
+                  activity: CampType,
+                  season: Climate,
+                  ) {
+    val dailyNutrition = remember { mutableStateOf<DailyNutrition?>(null) }
+    val productDetails = remember { mutableStateMapOf<String, Double>() } // Используем Map для хранения продуктов и их масс
+
+    LaunchedEffect(ingredients) {
+        // Обнуляем данные перед загрузкой
+        dailyNutrition.value = null
+        productDetails.clear()
+
+        // Подсчитываем дневную пищевую ценность и собираем информацию о продуктах
+        dailyNutrition.value = calculateDailyNutrition(ingredients, products, productDetails, personNumber,
+            activity,
+            season)
+    }
+
+    Card(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Пищевая ценность за день", style = MaterialTheme.typography.headlineMedium)
+
+            dailyNutrition.value?.let { nutrition ->
+                Row(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Chip(text = "${nutrition.proteins} Б", modifier = Modifier.padding(end = 4.dp))
+                    Chip(text = "${nutrition.fats} Ж", modifier = Modifier.padding(end = 4.dp))
+                    Chip(text = "${nutrition.carbohydrates} У", modifier = Modifier.padding(end = 4.dp))
+                    Chip(text = "${nutrition.calories} ккал")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Использованные продукты:", style = MaterialTheme.typography.bodyMedium)
+
+                // Отображаем список продуктов и их граммовок
+                productDetails.forEach { (productName, weight) ->
+                    Text("$productName: $weight гр")
+                }
+            } ?: run {
+                // Пока данные загружаются, показываем индикатор загрузки
+                CircularProgressIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+fun Chip(text: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
     }
 }
 
@@ -148,17 +263,83 @@ data class Ingredient(
     val type: String = "", // Тип приема пищи (Завтрак/Обед/Ужин)
     val meal: String = "", // Название блюда
     val productId: Int = 0, // Идентификатор продукта
-    val weightPerPortion: Int = 0 // Вес ингредиента в граммах в порции блюда
+    val weightPerPortion: Double = 0.0 // Вес ингредиента в граммах в порции блюда
 )
 
 data class Product(
     val name: String = "",
-    val proteins: Int = 0,
-    val fats: Int = 0,
-    val carbohydrates: Int = 0,
-    val calories: Int = 0,
+    val proteins: Double = 0.0,
+    val fats: Double = 0.0,
+    val carbohydrates: Double = 0.0,
+    val calories: Double = 0.0,
 )
+
+
+// Класс для хранения дневной пищевой ценности
+data class DailyNutrition(
+    val proteins: Double = 0.0,
+    val fats: Double = 0.0,
+    val carbohydrates: Double = 0.0,
+    val calories: Double = 0.0
+)
+
+// Обновленная функция для подсчета общей пищевой ценности за день
+suspend fun calculateDailyNutrition(
+    ingredients: List<Ingredient>,
+    products: CollectionReference,
+    productDetails: MutableMap<String, Double>,
+    personNumber: Int,
+    activity: CampType,
+    season: Climate// Изменяем на MutableMap
+): DailyNutrition {
+    var totalProteins = 0.0
+    var totalFats = 0.0
+    var totalCarbohydrates = 0.0
+    var totalCalories = 0.0
+
+    for (ingredient in ingredients) {
+        val productDocument = products.document(ingredient.productId.toString()).get().await()
+        val product = productDocument.toObject(Product::class.java)
+
+        if (product != null) {
+            totalProteins += (product.proteins * ingredient.weightPerPortion) / 100
+            totalFats += (product.fats * ingredient.weightPerPortion) / 100
+            totalCarbohydrates += (product.carbohydrates * ingredient.weightPerPortion) / 100
+            totalCalories += (product.calories * ingredient.weightPerPortion) / 100
+
+            // Суммируем массу одинаковых продуктов
+            productDetails[product.name] = (productDetails[product.name] ?: 0.0) + ingredient.weightPerPortion
+        }
+    }
+
+    return DailyNutrition(totalProteins, totalFats, totalCarbohydrates, totalCalories)
+}
 
 fun exportToExcel(context: Context, days: List<List<Ingredient>>) {
     // Логика экспорта в Excel (не реализована в этом примере)
+}
+
+
+fun calculateKof(
+    prodCalories: Double = 0.0,
+    mType: String,
+    climate: Int = 0,
+    cType: Double= 1.0
+): Double {
+    // Находим MealType по displayName
+    val mealTypeVal = MealType.values().find { it.displayName == mType }
+
+    // Вычисляем калории
+//    val calories = prodCalories / 100 * prodMass
+    // Проверяем cType на ноль перед делением
+    if (cType == 0.0) {
+        throw IllegalArgumentException("cType не может быть равен нулю.")
+    }
+    // Вычисляем прием калорий
+    val priem = cType / 100 * (mealTypeVal?.calorieShare ?: 1) + cType / 100 * climate
+
+    // Вычисляем коэффициент
+    val kof = priem/prodCalories
+    println(kof)
+    return kof
 }
