@@ -37,8 +37,6 @@ fun ResultScreen(
     val productsCollection = fs.collection("products")
 
 
-
-
     LaunchedEffect(Unit) {
         // Получаем все ингредиенты из Firestore
         val ingredientsList = ingredientsCollection.get().await().toObjects(Ingredient::class.java)
@@ -75,6 +73,8 @@ fun ResultScreen(
         }
     }
 
+
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -84,13 +84,6 @@ fun ResultScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(onClick = {
-                        exportToExcel(context, days)
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = "Export")
-                    }
-                }
             )
         }
     ) { paddingValues ->
@@ -158,7 +151,7 @@ fun MealCard(
                 )
 
                 // Добавляем продукт в список с учетом коэффициента
-                productDetails.add(Pair(product.name, ingredient.weightPerPortion* ingredientKof))
+                productDetails.add(Pair(product.name, ingredient.weightPerPortion * ingredientKof * personNumber))
 
                 // Суммируем значения с учетом коэффициента
                 totalProteins.value += (product.proteins  * ingredientKof)
@@ -197,52 +190,92 @@ fun MealCard(
 
 
 @Composable
-fun NutritionCard(ingredients: List<Ingredient>, products: CollectionReference,
-                  personNumber: Int,
-                  activity: CampType,
-                  season: Climate,
-                  ) {
-    val dailyNutrition = remember { mutableStateOf<DailyNutrition?>(null) }
-    val productDetails = remember { mutableStateMapOf<String, Double>() } // Используем Map для хранения продуктов и их масс
+fun NutritionCard(
+    ingredients: List<Ingredient>,
+    products: CollectionReference,
+    personNumber: Int,
+    activity: CampType,
+    season: Climate,
+) {
+    val productDetails = remember { mutableStateMapOf<String, Double>() } // Используем Map для хранения (название продукта, вес)
 
-    LaunchedEffect(ingredients) {
-        // Обнуляем данные перед загрузкой
-        dailyNutrition.value = null
-        productDetails.clear()
+    // Переменные для хранения итоговых значений макронутриентов
+    val totalProteins = remember { mutableStateOf(0.0) }
+    val totalFats = remember { mutableStateOf(0.0) }
+    val totalCarbohydrates = remember { mutableStateOf(0.0) }
+    val totalCalories = remember { mutableStateOf(0.0) }
 
-        // Подсчитываем дневную пищевую ценность и собираем информацию о продуктах
-        dailyNutrition.value = calculateDailyNutrition(ingredients, products, productDetails, personNumber,
-            activity,
-            season)
+    // Группируем ингредиенты по названию блюда
+    val groupedIngredients = ingredients.groupBy { it.meal }
+
+    groupedIngredients.forEach { (mealName, ingredients) ->
+        LaunchedEffect(ingredients) {
+            var totalMass = 0.0
+            productDetails.clear()
+            totalProteins.value = 0.0
+            totalFats.value = 0.0
+            totalCarbohydrates.value = 0.0
+            totalCalories.value = 0.0
+
+            for (ingredient in ingredients) {
+                // Суммируем массу всех ингредиентов
+                totalMass += ingredient.weightPerPortion
+            }
+
+            for (ingredient in ingredients) {
+                val productDocument = products.document(ingredient.productId.toString()).get().await()
+                val product = productDocument.toObject(Product::class.java)
+
+                if (product != null) {
+                    // Расчет коэффициента с учетом общего веса
+                    val ingredientKof = calculateKof(
+                        prodCalories = product.calories,
+                        mType = ingredient.type,
+                        climate = season.calorieAdjustmentPercentage,
+                        cType = activity.dailyCalories * (ingredient.weightPerPortion / totalMass)
+                    )
+
+                    // Рассчитываем вес для продукта с учетом коэффициента
+                    val weightForProduct = ingredient.weightPerPortion * ingredientKof * personNumber
+
+                    // Суммируем граммовки одинаковых продуктов
+                    productDetails[product.name] = productDetails.getOrDefault(product.name, 0.0) + weightForProduct
+
+                    // Суммируем значения макронутриентов с учетом коэффициента
+                    totalProteins.value += (product.proteins * ingredientKof * personNumber)
+                    totalFats.value += (product.fats * ingredientKof * personNumber)
+                    totalCarbohydrates.value += (product.carbohydrates * ingredientKof * personNumber)
+                    totalCalories.value += (product.calories * ingredientKof * personNumber)
+                }
+            }
+        }
     }
 
     Card(modifier = Modifier.padding(8.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Пищевая ценность за день", style = MaterialTheme.typography.headlineMedium)
+            Text("Использованные продукты:", style = MaterialTheme.typography.headlineMedium)
 
-            dailyNutrition.value?.let { nutrition ->
-                Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                    Chip(text = "${nutrition.proteins} Б", modifier = Modifier.padding(end = 4.dp))
-                    Chip(text = "${nutrition.fats} Ж", modifier = Modifier.padding(end = 4.dp))
-                    Chip(text = "${nutrition.carbohydrates} У", modifier = Modifier.padding(end = 4.dp))
-                    Chip(text = "${nutrition.calories} ккал")
-                }
+            // Отображаем список продуктов и их граммовок без повторов
+            productDetails.forEach { (productName, weight) ->
+                Text("$productName: ${"%.1f".format(weight)} гр")
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                Text("Использованные продукты:", style = MaterialTheme.typography.bodyMedium)
-
-                // Отображаем список продуктов и их граммовок
-                productDetails.forEach { (productName, weight) ->
-                    Text("$productName: $weight гр")
-                }
-            } ?: run {
-                // Пока данные загружаются, показываем индикатор загрузки
-                CircularProgressIndicator()
+            // Выводим БЖУ и калории в виде чипов
+            Row(modifier = Modifier.padding(vertical = 8.dp)) {
+                Chip(text = "${"%.1f".format(totalProteins.value)} Б", modifier = Modifier.padding(end = 4.dp))
+                Chip(text = "${"%.1f".format(totalFats.value)} Ж", modifier = Modifier.padding(end = 4.dp))
+                Chip(text = "${"%.1f".format(totalCarbohydrates.value)} У", modifier = Modifier.padding(end = 4.dp))
+                Chip(text = "${"%.1f".format(totalCalories.value)} ккал")
             }
         }
     }
 }
+
+
+
+
 
 @Composable
 fun Chip(text: String, modifier: Modifier = Modifier) {
@@ -283,41 +316,6 @@ data class DailyNutrition(
     val calories: Double = 0.0
 )
 
-// Обновленная функция для подсчета общей пищевой ценности за день
-suspend fun calculateDailyNutrition(
-    ingredients: List<Ingredient>,
-    products: CollectionReference,
-    productDetails: MutableMap<String, Double>,
-    personNumber: Int,
-    activity: CampType,
-    season: Climate// Изменяем на MutableMap
-): DailyNutrition {
-    var totalProteins = 0.0
-    var totalFats = 0.0
-    var totalCarbohydrates = 0.0
-    var totalCalories = 0.0
-
-    for (ingredient in ingredients) {
-        val productDocument = products.document(ingredient.productId.toString()).get().await()
-        val product = productDocument.toObject(Product::class.java)
-
-        if (product != null) {
-            totalProteins += (product.proteins * ingredient.weightPerPortion) / 100
-            totalFats += (product.fats * ingredient.weightPerPortion) / 100
-            totalCarbohydrates += (product.carbohydrates * ingredient.weightPerPortion) / 100
-            totalCalories += (product.calories * ingredient.weightPerPortion) / 100
-
-            // Суммируем массу одинаковых продуктов
-            productDetails[product.name] = (productDetails[product.name] ?: 0.0) + ingredient.weightPerPortion
-        }
-    }
-
-    return DailyNutrition(totalProteins, totalFats, totalCarbohydrates, totalCalories)
-}
-
-fun exportToExcel(context: Context, days: List<List<Ingredient>>) {
-    // Логика экспорта в Excel (не реализована в этом примере)
-}
 
 
 fun calculateKof(
@@ -340,6 +338,6 @@ fun calculateKof(
 
     // Вычисляем коэффициент
     val kof = priem/prodCalories
-    println(kof)
+//    println(kof)
     return kof
 }
