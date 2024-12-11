@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +30,7 @@ import com.google.firebase.auth.auth
 @Composable
 fun ProfileScreen(navController: NavHostController) {
     val auth = Firebase.auth
+    val context = LocalContext.current
 
     Scaffold(
         bottomBar = {
@@ -121,7 +123,7 @@ fun ProfileScreen(navController: NavHostController) {
                                 val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                                     data = Uri.parse("mailto:support@teamarctic.ru")
                                 }
-//                                startActivity(context, emailIntent, null)
+                                context.startActivity(emailIntent)
                             }
                         )
                     }
