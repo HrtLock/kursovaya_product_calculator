@@ -1,9 +1,9 @@
 package com.example.prodcalcu.logic
 
 enum class CampType(val dailyCalories: Int, val displayName: String) {
-    PERMANENT_CAMP(2000, "Лагерь постоянный"),
+    PERMANENT_CAMP(2000, "Лагерь"),
     RADIAL_EXCURSIONS(2500, "Радиальные вылазки"),
-    MOBILE_CAMP(3500, "Подвижный лагерь")
+    MOBILE_CAMP(3500, "Переходы")
 }
 
 enum class Climate(val calorieAdjustmentPercentage: Int, val displayName: String) {

@@ -14,11 +14,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.prodcalcu.ui.calc_filter.CalculatorScreen
-import com.example.prodcalcu.ui.login.LoginScreen
+import com.example.prodcalcu.ui.auth.LoginScreen
 
 import androidx.navigation.navArgument
 import com.example.prodcalcu.logic.CampType
 import com.example.prodcalcu.logic.Climate
+import com.example.prodcalcu.ui.auth.IntroScreen
+import com.example.prodcalcu.ui.profile.CalculationsListScreen
+import com.example.prodcalcu.ui.profile.ProfileScreen
+import com.example.prodcalcu.ui.register.RegistrationScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,9 +32,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             Modifier.safeDrawingPadding()
             val navController: NavHostController = rememberNavController()
-            NavHost(navController = navController, startDestination = "login") {
+            NavHost(navController = navController, startDestination = "intro") {
+
+                composable("intro") {
+                    IntroScreen(navController)
+                }
                 composable("login") {
                     LoginScreen(navController)
+                }
+                composable("register") {
+                    RegistrationScreen(navController)
                 }
                 composable("calculator") {
                     CalculatorScreen(navController)
@@ -52,6 +63,12 @@ class MainActivity : ComponentActivity() {
                     val season = backStackEntry.arguments?.getString("season")?.let { Climate.valueOf(it) } ?: Climate.SUMMER
 
                     ResultScreen(navController, calcName, dayNumber, personNumber, activity, season)
+                }
+                composable("profile") {
+                    ProfileScreen(navController)
+                }
+                composable("list") {
+                    CalculationsListScreen(navController)
                 }
 
             }

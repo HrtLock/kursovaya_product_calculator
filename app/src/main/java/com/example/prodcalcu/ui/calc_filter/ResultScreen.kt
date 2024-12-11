@@ -10,8 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.prodcalcu.R
 import com.example.prodcalcu.logic.CampType
 import com.example.prodcalcu.logic.Climate
 import com.example.prodcalcu.logic.MealType
@@ -105,6 +108,11 @@ fun ResultScreen(
                     ingredientsList.add(ingredients)
                 }
                 NutritionCard(mealPlans, productsCollection, personNumber, activity, season)
+                if (dayIndex != days.size-1) HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).padding(horizontal = 16.dp),
+                    color = colorResource(R.color.black),
+                    thickness = 1.dp // Устанавливает толщину линии
+                )
             }
         }
     }
@@ -163,9 +171,17 @@ fun MealCard(
         }
     }
 
-    Card(modifier = Modifier.padding(8.dp)) {
+    Card(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardColors(
+            containerColor = colorResource(R.color.white),
+            contentColor = colorResource(R.color.black),
+            disabledContainerColor = colorResource(R.color.transparent),
+            disabledContentColor = colorResource(R.color.transparent),
+        )) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(mealName, style = MaterialTheme.typography.headlineMedium)
+            Text(mealName, style = MaterialTheme.typography.headlineSmall)
 
             // Отображаем информацию о продуктах и их массах
             Column {
@@ -178,10 +194,10 @@ fun MealCard(
 
             // Выводим БЖУ и калории в виде чипов
             Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                Chip(text = "${"%.1f".format(totalProteins.value)} Б", modifier = Modifier.padding(end = 4.dp))
-                Chip(text = "${"%.1f".format(totalFats.value)} Ж", modifier = Modifier.padding(end = 4.dp))
-                Chip(text = "${"%.1f".format(totalCarbohydrates.value)} У", modifier = Modifier.padding(end = 4.dp))
-                Chip(text = "${"%.1f".format(totalCalories.value)} ккал")
+                Chip(true, text = "${"%.1f".format(totalCalories.value)} ккал")
+                Chip(false, text = "${"%.1f".format(totalProteins.value)} Б", modifier = Modifier.padding(end = 4.dp))
+                Chip(false, text = "${"%.1f".format(totalFats.value)} Ж", modifier = Modifier.padding(end = 4.dp))
+                Chip(false, text = "${"%.1f".format(totalCarbohydrates.value)} У", modifier = Modifier.padding(end = 4.dp))
             }
         }
     }
@@ -251,23 +267,35 @@ fun NutritionCard(
         }
     }
 
-    Card(modifier = Modifier.padding(8.dp)) {
+    Card(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardColors(
+            containerColor = colorResource(R.color.white),
+            contentColor = colorResource(R.color.black),
+            disabledContainerColor = colorResource(R.color.transparent),
+            disabledContentColor = colorResource(R.color.transparent),
+        )) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Использованные продукты:", style = MaterialTheme.typography.headlineMedium)
+            Text("Использованные продукты:", style = MaterialTheme.typography.headlineSmall)
 
             // Отображаем список продуктов и их граммовок без повторов
             productDetails.forEach { (productName, weight) ->
-                Text("$productName: ${"%.1f".format(weight)} гр")
+                Text(
+                    text = "$productName: ${"%.1f".format(weight)} гр",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Start
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Выводим БЖУ и калории в виде чипов
             Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                Chip(text = "${"%.1f".format(totalProteins.value)} Б", modifier = Modifier.padding(end = 4.dp))
-                Chip(text = "${"%.1f".format(totalFats.value)} Ж", modifier = Modifier.padding(end = 4.dp))
-                Chip(text = "${"%.1f".format(totalCarbohydrates.value)} У", modifier = Modifier.padding(end = 4.dp))
-                Chip(text = "${"%.1f".format(totalCalories.value)} ккал")
+                Chip(true, text = "${"%.1f".format(totalCalories.value)} ккал")
+                Chip(false, text = "${"%.1f".format(totalProteins.value)} Б", modifier = Modifier.padding(end = 4.dp))
+                Chip(false, text = "${"%.1f".format(totalFats.value)} Ж", modifier = Modifier.padding(end = 4.dp))
+                Chip(false, text = "${"%.1f".format(totalCarbohydrates.value)} У", modifier = Modifier.padding(end = 4.dp))
             }
         }
     }
@@ -278,15 +306,16 @@ fun NutritionCard(
 
 
 @Composable
-fun Chip(text: String, modifier: Modifier = Modifier) {
+fun Chip(isCcal: Boolean, text: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+        color = if (isCcal) colorResource(R.color.primaryDark) else colorResource(R.color.primaryLight),
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colorResource(R.color.white),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }

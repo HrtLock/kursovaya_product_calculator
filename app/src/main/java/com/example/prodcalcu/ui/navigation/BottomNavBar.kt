@@ -16,7 +16,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.prodcalcu.R
 
 @Composable
 fun BottomNavigationBar(
@@ -24,58 +28,48 @@ fun BottomNavigationBar(
     onNavigate: (String) -> Unit
 ) {
     BottomAppBar(
-        content = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
+        containerColor = colorResource(R.color.primaryLight),
+        modifier = Modifier
+            .height(100.dp)
+            .background(colorResource(R.color.primaryLight))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Иконка для экрана конструктора
+            IconButton(
+                onClick = { onNavigate("calculator") },
             ) {
-                // Иконка для экрана конструктора
-                IconButton(
-                    onClick = { onNavigate("calculator") },
-                    modifier = Modifier
-                        .then(
-                            if (currentPage == "calculator") Modifier.background(MaterialTheme.colorScheme.primary) else Modifier
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Конструктор",
-                        tint = if (currentPage == "calculator") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                // Иконка для экрана списка раскладок
-                IconButton(
-                    onClick = { onNavigate("list") },
-                    modifier = Modifier
-                        .then(
-                            if (currentPage == "list") Modifier.background(MaterialTheme.colorScheme.primary) else Modifier
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.List,
-                        contentDescription = "Раскладки",
-                        tint = if (currentPage == "list") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                // Иконка для экрана профиля
-                IconButton(
-                    onClick = { onNavigate("profile") },
-                    modifier = Modifier
-                        .then(
-                            if (currentPage == "profile") Modifier.background(MaterialTheme.colorScheme.primary) else Modifier
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Профиль",
-                        tint = if (currentPage == "profile") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
-                    )
-                }
+                Icon(
+                    painter = painterResource(id = R.drawable.edit_square),
+                    contentDescription = "Конструктор",
+                    tint = if (currentPage == "calculator") colorResource(R.color.white) else colorResource(R.color.secondaryLight)
+                )
             }
-        },
-        modifier = Modifier.height(100.dp)
-    )
+
+            // Иконка для экрана списка раскладок
+            IconButton(
+                onClick = { onNavigate("list") },
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.list_alt),
+                    contentDescription = "Раскладки",
+                    tint = if (currentPage == "list") colorResource(R.color.white) else colorResource(R.color.secondaryLight)
+                )
+            }
+
+            // Иконка для экрана профиля
+            IconButton(
+                onClick = { onNavigate("profile") },
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.account_circle),
+                    contentDescription = "Профиль",
+                    tint = if (currentPage == "profile") colorResource(R.color.white) else colorResource(R.color.secondaryLight)
+                )
+            }
+        }
+    }
 }
